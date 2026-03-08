@@ -1,0 +1,285 @@
+/* ======================================================
+   GLOBAL THEME
+====================================================== */
+
+:root {
+  --bg-main: #050718;
+  --bg-grad: #070b1e;
+
+  --card-bg: rgba(12, 18, 45, 0.65);
+  --border: rgba(132, 160, 255, 0.18);
+  --border-strong: rgba(132, 160, 255, 0.35);
+
+  --text-main: rgba(234, 240, 255, 0.95);
+  --text-muted: rgba(234, 240, 255, 0.7);
+
+  --primary: #466eff;
+  --primary-soft: rgba(70, 110, 255, 0.2);
+
+  --danger: rgba(255, 90, 90, 0.8);
+  --success: rgba(90, 255, 150, 0.9);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  background: var(--bg-main);
+  color: var(--text-main);
+}
+
+/* ======================================================
+   COMMON LAYOUT
+====================================================== */
+
+.container {
+  max-width: 1100px;
+  margin: auto;
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 18px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+}
+
+.btn {
+  padding: 12px 16px;
+  border-radius: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: rgba(9, 13, 35, 0.3);
+  color: var(--text-main);
+  transition: all 0.15s ease;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  border-color: var(--border-strong);
+}
+
+.btn.primary {
+  background: linear-gradient(180deg, var(--primary), rgba(70, 110, 255, 0.35));
+  color: #fff;
+  border-color: var(--border-strong);
+}
+
+.btn.danger {
+  background: rgba(255, 90, 90, 0.15);
+  border-color: rgba(255, 120, 120, 0.35);
+}
+
+/* ======================================================
+   RULE DIET PAGE
+====================================================== */
+
+.rule-diet {
+  min-height: 100vh;
+  padding: 48px 16px;
+  background:
+    radial-gradient(1200px 600px at 50% 0%, rgba(40, 75, 255, 0.18), transparent),
+    linear-gradient(180deg, var(--bg-grad), var(--bg-main));
+}
+
+.rule-diet .hero {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.rule-diet .title {
+  font-size: clamp(28px, 3vw, 44px);
+  font-weight: 900;
+}
+
+.rule-diet .subtitle {
+  color: var(--text-muted);
+}
+
+.rule-diet .grid {
+  display: grid;
+  grid-template-columns: 1.25fr 0.85fr;
+  gap: 16px;
+}
+
+@media (max-width: 980px) {
+  .rule-diet .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.rule-diet .meal-section {
+  margin-bottom: 14px;
+}
+
+.rule-diet .meal-title {
+  font-weight: 900;
+  margin-bottom: 8px;
+}
+
+.rule-diet .radio-card {
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: rgba(9, 13, 35, 0.25);
+  cursor: pointer;
+}
+
+.rule-diet .radio-card:hover {
+  border-color: var(--border-strong);
+}
+
+.rule-diet .summary {
+  position: sticky;
+  top: 16px;
+}
+
+.rule-diet .summary-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+
+.rule-diet .remove {
+  background: none;
+  border: none;
+  color: var(--danger);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+/* ======================================================
+   RESULTS PAGE
+====================================================== */
+
+.results-page {
+  min-height: 100vh;
+  padding: 48px 16px;
+  background:
+    radial-gradient(1200px 600px at 30% 0%, rgba(56, 189, 248, 0.18), transparent),
+    linear-gradient(180deg, var(--bg-grad), var(--bg-main));
+}
+
+.results-page .title {
+  font-size: clamp(26px, 3vw, 40px);
+  font-weight: 900;
+  margin-bottom: 8px;
+}
+
+.results-page .subtitle {
+  color: var(--text-muted);
+  margin-bottom: 20px;
+}
+
+.results-page .grid {
+  display: grid;
+  grid-template-columns: 0.9fr 1.1fr;
+  gap: 16px;
+}
+
+@media (max-width: 980px) {
+  .results-page .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.results-page .saved-card {
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: rgba(9, 13, 35, 0.28);
+  cursor: pointer;
+}
+
+.results-page .saved-card.active {
+  border-color: var(--border-strong);
+  background: var(--primary-soft);
+}
+
+.results-page .meal-row {
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  margin-bottom: 10px;
+}
+
+/* Floating Know More */
+.knowmore-float {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 999;
+  padding: 12px 18px;
+  border-radius: 999px;
+  font-weight: 900;
+  background: rgba(9, 13, 35, 0.6);
+  border: 1px solid var(--border-strong);
+  animation: floaty 1.8s ease-in-out infinite;
+}
+
+@keyframes floaty {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+/* ======================================================
+   SMARTBUDDY PAGE
+====================================================== */
+
+.smartbuddy-page {
+  min-height: 100vh;
+  padding: 48px 16px;
+  background:
+    radial-gradient(1200px 700px at 30% 10%, rgba(30, 60, 140, 0.35), transparent),
+    linear-gradient(180deg, var(--bg-grad), var(--bg-main));
+}
+
+.smartbuddy-page .title {
+  font-size: clamp(26px, 3vw, 40px);
+  font-weight: 900;
+}
+
+.smartbuddy-page .subtitle {
+  margin: 10px 0 18px;
+  color: var(--text-muted);
+}
+
+.smartbuddy-page .grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 980px) {
+  .smartbuddy-page .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.smartbuddy-page .prebox {
+  white-space: pre-wrap;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: rgba(9, 13, 35, 0.28);
+  min-height: 260px;
+}
+
+.smartbuddy-page .info {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255, 80, 80, 0.12);
+  border: 1px solid rgba(255, 120, 120, 0.35);
+}
