@@ -1,0 +1,89 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Food {
+  food_id         Int    @id
+  food_name       String
+  meal_type       String
+  diet_type       String
+  calories_kcal   Float
+  carbohydrates_g Float
+  protein_g       Float
+  fat_g           Float
+  fiber_g         Float
+  calcium_mg      Float
+  magnesium_mg    Float
+  iron_mg         Float
+  zinc_mg         Float
+  vitamin_A       Float
+  vitamin_B1      Float
+  vitamin_B2      Float
+  vitamin_B12     Float
+  vitamin_C       Float
+  vitamin_D       Float
+  vitamin_E       Float
+  vitamin_K       Float
+  vitamin_H       Float
+  food_category   String
+  seasonal        String
+  season          String
+  ingredients     String
+  region          String
+  state           String
+  source          String
+
+  @@map("foods")
+}
+
+model BmiClassification {
+  bmi_category String @id
+  bmi_min      Float
+  bmi_max      Float
+
+  @@map("bmi_classification")
+}
+
+model NutritionRule {
+  bmi_category          String @id
+  recommended_calories  String
+  fat_limit_g           String
+  fiber_min_g           Float
+  protein_focus         String
+
+  @@map("nutrition_rules")
+}
+model UserPreference {
+  user_id        Int    @id
+  diet_type      String
+  allergy        String
+  preferred_meal String
+  height_cm      Float?
+  weight_kg      Float?
+}
+model SavedPlan {
+  id          Int      @id @default(autoincrement())
+  user_id     Int
+  breakfast   String? @db.Text
+  lunch       String? @db.Text
+  snack       String? @db.Text
+  dinner      String? @db.Text
+  created_at  DateTime @default(now())
+
+  @@index([user_id])
+  @@map("saved_plans")
+}
+model User {
+  id         Int      @id @default(autoincrement())
+  name       String
+  email      String   @unique
+  password   String
+  created_at DateTime @default(now())
+
+  @@map("users")
+}

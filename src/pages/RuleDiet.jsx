@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { loadCSV } from "../utils/csvLoader";
-
+import { getUserId } from "../utils/user";
 const MEALS = ["breakfast", "lunch", "snack", "dinner"];
 const LS_HISTORY_KEY = "bmi_plan_history";
 
@@ -120,13 +119,11 @@ function matchesBmiRule(food, rule) {
 
   const { max } = parseCaloriesRange(rule.recommended_calories);
   const fatLimit = parseLimit(rule.fat_limit_g);
-  const fiberMin = safeNum(rule.fiber_min_g, 0);
 
   const calOk = cal >= 50 && cal <= Math.max(650, max / 2.5);
   const fatOk = fat <= fatLimit || fatLimit === Infinity;
-  const fiberOk = fiber >= Math.max(0, fiberMin / 4);
 
-  return calOk && fatOk && fiberOk;
+  return calOk && fatOk;
 }
 
 /* ---------- Snack detection ---------- */
@@ -424,79 +421,15 @@ function scoreFood(food, planMode, prefs) {
   return score;
 }
 
-/* ✅ OPTIONAL LLM assist (calls /api/llm). If not available -> fallback */
-async function callLLMChoose({ prefs, bmiRule, candidatesByMeal }) {
-  try {
-    const compact = {};
-    for (const [meal, arr] of Object.entries(candidatesByMeal)) {
-      compact[meal] = arr.slice(0, 12).map((x) => ({
-        name: x.food_name,
-        kcal: Math.round(safeNum(x.calories_kcal)),
-        p: safeNum(x.protein_g),
-        f: safeNum(x.fat_g),
-        fi: safeNum(x.fiber_g),
-      }));
-    }
-
-    const prompt = `
-You are SmartBuddy Diet Planner (gemma 2:2b).
-Pick 4 best options for each meal from provided candidates ONLY.
-Goal: match user preferences + BMI rule, keep variety, prefer snack-like items for SNACK.
-
-User:
-- BMI: ${prefs.bmiCategory}
-- Diet: ${prefs.dietPref}
-- Health: ${(prefs.healthConditions || []).join(", ") || "None"}
-- Allergies: ${(prefs.allergies || []).join(", ") || "None"}
-- Dislikes: ${prefs.dislikes || "None"}
-
-BMI Rule:
-- Calories: ${bmiRule?.recommended_calories || "n/a"}
-- Fat limit: ${bmiRule?.fat_limit_g || "n/a"}
-- Fiber min: ${bmiRule?.fiber_min_g || "n/a"}
-
-Candidates JSON:
-${JSON.stringify(compact, null, 2)}
-
-Return STRICT JSON only:
-{
- "breakfast":[ "exact name", ... ],
- "lunch":[...],
- "snack":[...],
- "dinner":[...]
-}
-`.trim();
-
-    const res = await fetch("/api/llm", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt }),
-    });
-
-    if (!res.ok) return null;
-    const data = await res.json();
-    const text = data?.text || data?.message || "";
-
-    const jsonStart = text.indexOf("{");
-    const jsonEnd = text.lastIndexOf("}");
-    if (jsonStart === -1 || jsonEnd === -1) return null;
-
-    const parsed = JSON.parse(text.slice(jsonStart, jsonEnd + 1));
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
 export default function RuleDiet() {
   const nav = useNavigate();
   const location = useLocation();
-
   const bmiCategoryFromState =
     location.state?.bmiCategory || location.state?.bmi_category || "Normal";
 
   const [foods, setFoods] = useState([]);
   const [rules, setRules] = useState([]);
+  const [_seed, setSeed] = useState(1);
   const [loading, setLoading] = useState(true);
   const [busyGen, setBusyGen] = useState(false);
   const [err, setErr] = useState("");
@@ -520,7 +453,6 @@ export default function RuleDiet() {
 
   const [prefsSubmitted, setPrefsSubmitted] = useState(false);
 
-  const [seed, setSeed] = useState(1);
   const [activePlanId, setActivePlanId] = useState("");
   const [generatedPlans, setGeneratedPlans] = useState({});
   const [picked, setPicked] = useState({
@@ -530,69 +462,106 @@ export default function RuleDiet() {
     dinner: null,
   });
 
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        setLoading(true);
-        setErr("");
+useEffect(() => {
+  let alive = true;
 
-        const [foodsRows, rulesRows] = await Promise.all([
-          loadCSV("/datasets/foods_dataset_final.csv"),
-          loadCSV("/datasets/nutrition_rules_final.csv"),
-        ]);
+  async function loadDietData() {
+    try {
+      setLoading(true);
+      setErr("");
 
-        if (!foodsRows?.length)
-          throw new Error(
-            "foods_dataset_final.csv not loaded (empty/404). public/datasets/."
-          );
-        if (!rulesRows?.length)
-          throw new Error(
-            "nutrition_rules_final.csv not loaded  (empty/404). public/datasets/."
-          );
-        if (!alive) return;
+      const response = await fetch("http://localhost:5000/api/diet-data");
 
-        const foodsNorm = foodsRows
-          .map((r, idx) => ({
-            _row: idx,
-            food_id: r.food_id ?? r.id ?? `${idx}`,
-            food_name: r.food_name ?? r.name ?? "Unknown Food",
-            diet_type: r.diet_type ?? r.diet ?? "",
-            meal_type: r.meal_type ?? r.meal ?? "",
-            calories_kcal: safeNum(r.calories_kcal ?? r.calories ?? r.kcal, 0),
-            protein_g: safeNum(r.protein_g ?? r.protein ?? 0, 0),
-            fat_g: safeNum(r.fat_g ?? r.fat ?? 0, 0),
-            fiber_g: safeNum(r.fiber_g ?? r.fiber ?? 0, 0),
-          }))
-          .filter((f) => f.food_name && f.calories_kcal > 0);
+      if (!response.ok) {
+        throw new Error("Failed to load diet data from server");
+      }
 
-        const rulesNorm = rulesRows.map((r) => ({
-          bmi_category: r.bmi_category ?? r.category ?? "",
-          recommended_calories: r.recommended_calories ?? r.calories ?? "",
-          fat_limit_g: r.fat_limit_g ?? r.fat_limit ?? "",
-          fiber_min_g: r.fiber_min_g ?? r.fiber_min ?? 0,
-          protein_focus: r.protein_focus ?? r.protein ?? "",
-        }));
+      const data = await response.json();
 
-        setFoods(foodsNorm);
-        setRules(rulesNorm);
-      } catch (e) {
-        setErr(e?.message || "Failed to load datasets");
-      } finally {
+      if (!alive) return;
+
+      if (!data.foods || !Array.isArray(data.foods)) {
+        throw new Error("Invalid food data received from server");
+      }
+
+      if (!data.rules || !Array.isArray(data.rules)) {
+        throw new Error("Invalid nutrition rules received from server");
+      }
+
+      // Keep the same shape your existing RuleDiet logic expects.
+      const foodsNorm = data.foods
+        .map((food, index) => ({
+          _row: index,
+
+          food_id: food.food_id,
+          food_name: food.food_name,
+          meal_type: food.meal_type,
+          diet_type: food.diet_type,
+
+          calories_kcal: safeNum(food.calories_kcal),
+          carbohydrates_g: safeNum(food.carbohydrates_g),
+          protein_g: safeNum(food.protein_g),
+          fat_g: safeNum(food.fat_g),
+          fiber_g: safeNum(food.fiber_g),
+
+          calcium_mg: safeNum(food.calcium_mg),
+          magnesium_mg: safeNum(food.magnesium_mg),
+          iron_mg: safeNum(food.iron_mg),
+          zinc_mg: safeNum(food.zinc_mg),
+
+          vitamin_A: safeNum(food.vitamin_A),
+          vitamin_B1: safeNum(food.vitamin_B1),
+          vitamin_B2: safeNum(food.vitamin_B2),
+          vitamin_B12: safeNum(food.vitamin_B12),
+          vitamin_C: safeNum(food.vitamin_C),
+          vitamin_D: safeNum(food.vitamin_D),
+          vitamin_E: safeNum(food.vitamin_E),
+          vitamin_K: safeNum(food.vitamin_K),
+          vitamin_H: safeNum(food.vitamin_H),
+
+          food_category: food.food_category,
+          seasonal: food.seasonal,
+          season: food.season,
+          ingredients: food.ingredients,
+          region: food.region,
+          state: food.state,
+          source: food.source,
+        }))
+        .filter(
+          (food) =>
+            food.food_name &&
+            Number.isFinite(food.calories_kcal)
+        );
+
+      const rulesNorm = data.rules.map((rule) => ({
+        bmi_category: rule.bmi_category,
+        recommended_calories: rule.recommended_calories,
+        fat_limit_g: rule.fat_limit_g,
+        fiber_min_g: safeNum(rule.fiber_min_g),
+        protein_focus: rule.protein_focus,
+      }));
+
+      setFoods(foodsNorm);
+      setRules(rulesNorm);
+    } catch (error) {
+      console.error("Failed to load diet data:", error);
+
+      if (alive) {
+        setErr(error.message || "Failed to load diet data");
+      }
+    } finally {
+      if (alive) {
         setLoading(false);
       }
-    })();
+    }
+  }
 
-    return () => {
-      alive = false;
-    };
-  }, []);
+  loadDietData();
 
-  const bmiRule = useMemo(() => {
-    return (
-      rules.find((r) => norm(r.bmi_category) === norm(prefs.bmiCategory)) || null
-    );
-  }, [rules, prefs.bmiCategory]);
+  return () => {
+    alive = false;
+  };
+}, []);
 
   // ✅ Plans list (generic)
   const plansList = useMemo(() => {
@@ -604,12 +573,17 @@ export default function RuleDiet() {
     ];
   }, []);
 
+  const bmiRule = useMemo(() => {
+    return (
+      rules.find((r) => norm(r.bmi_category) === norm(prefs.bmiCategory)) || null
+    );
+  }, [rules, prefs.bmiCategory]);
+
   function getBaseFilteredFoods() {
-    return foods
-      .filter((f) => dietMatches(f, prefs.dietPref))
-      .filter((f) => matchesBmiRule(f, bmiRule))
-      .filter((f) => passesUserRestrictions(f, prefs));
-  }
+  return foods
+    .filter((f) => dietMatches(f, prefs.dietPref))
+    .filter((f) => passesUserRestrictions(f, prefs));
+}
 
   function buildByMealPools(base) {
     const mainWords = [
@@ -771,9 +745,10 @@ export default function RuleDiet() {
     try {
       const rng = mulberry32(nextSeed);
       const plans = {};
+      const bmiRuleForPlans = rules.find((r) => norm(r.bmi_category) === norm(prefs.bmiCategory)) || null;
 
       for (const plan of plansList) {
-        const base = getBaseFilteredFoods();
+        const base = getBaseFilteredFoods().filter((food) => matchesBmiRule(food, bmiRuleForPlans));
         const byMeal = buildByMealPools(base);
 
         // ranked candidates
@@ -783,13 +758,6 @@ export default function RuleDiet() {
             (a, b) => scoreFood(b, plan.mode, prefs) - scoreFood(a, plan.mode, prefs)
           );
         }
-
-        // ✅ LLM assist (optional)
-        const llmPickedNames = await callLLMChoose({
-          prefs,
-          bmiRule,
-          candidatesByMeal: candidates,
-        });
 
         const mealsOut = {};
 
@@ -806,49 +774,6 @@ export default function RuleDiet() {
             continue;
           }
 
-          // If LLM chose, map names -> items (still filtered by egg budget below)
-          if (llmPickedNames?.[m]?.length) {
-            const wanted = llmPickedNames[m].map(norm);
-            const chosen = [];
-            for (const w of wanted) {
-              const hit = ranked.find((x) => norm(x.food_name) === w);
-              if (hit) chosen.push(hit);
-            }
-            const rest = ranked.filter(
-              (x) => !chosen.some((c) => c.food_id === x.food_id)
-            );
-            let merged = uniqBy(
-              [...chosen, ...pickRandomSeeded(rest.slice(0, 40), 6, rng)],
-              (x) => x.food_id
-            ).slice(0, 4);
-
-            // enforce non-veg budget
-            if (prefs.dietPref === "Non-Veg" && !eggAllergyOn(prefs)) {
-              const eggs = merged.filter(hasEggFood);
-              if (eggs.length > 0) {
-                if (nonVegEggBudget <= 0) {
-                  merged = merged.filter((x) => !hasEggFood(x));
-                  const extra = ranked.filter((x) => !hasEggFood(x));
-                  const need = 4 - merged.length;
-                  merged = uniqBy(
-                    [...merged, ...pickRandomSeeded(extra.slice(0, 80), need, rng)],
-                    (x) => x.food_id
-                  ).slice(0, 4);
-                } else {
-                  nonVegEggBudget -= 1;
-                  const keepEgg = eggs.slice(0, 1);
-                  const nonEgg = merged.filter((x) => !hasEggFood(x));
-                  merged = uniqBy([...keepEgg, ...nonEgg], (x) => x.food_id).slice(
-                    0,
-                    4
-                  );
-                }
-              }
-            }
-
-            mealsOut[m] = merged;
-            continue;
-          }
 
           // fallback selection with egg rules
           let chosen = pickMealOptionsWithEggRules({
@@ -911,11 +836,16 @@ export default function RuleDiet() {
     }
   }
 
+  const activePlan = generatedPlans[activePlanId] || null;
+
   function onSubmitPrefs(e) {
     e.preventDefault();
+
     setPrefsSubmitted(true);
+
     const next = Date.now();
     setSeed(next);
+
     generatePlansSmart(next);
   }
 
@@ -924,17 +854,6 @@ export default function RuleDiet() {
     setSeed(next);
     generatePlansSmart(next);
   }
-
-  // ✅ Auto refresh when diet/allergies changes (egg allergy ON -> replacement happens instantly)
-  useEffect(() => {
-    if (!prefsSubmitted) return;
-    const next = Date.now();
-    setSeed(next);
-    generatePlansSmart(next);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prefs.allergies, prefs.dietPref]);
-
-  const activePlan = generatedPlans[activePlanId] || null;
 
   async function refreshOnlyMeal(mealKey) {
     if (!activePlan) return;
@@ -947,7 +866,7 @@ export default function RuleDiet() {
       const rng = mulberry32(nextSeed);
 
       const planMode = activePlan?.meta?.mode || "balanced";
-      const base = getBaseFilteredFoods();
+      const base = getBaseFilteredFoods().filter((food) => matchesBmiRule(food, bmiRule));
       const byMeal = buildByMealPools(base);
 
       const ranked = [...(byMeal[mealKey] || [])].sort(
@@ -981,7 +900,6 @@ export default function RuleDiet() {
       });
 
       setPicked((p) => ({ ...p, [mealKey]: null }));
-      setSeed(nextSeed);
     } catch (e) {
       setErr(e?.message || "Failed to refresh meal");
     } finally {
@@ -994,36 +912,95 @@ export default function RuleDiet() {
     [picked]
   );
 
-  function followPlan() {
-    if (!activePlan) return;
+ async function followPlan() {
+  if (!activePlan) return;
 
-    const selectedMeals = {
-      breakfast: picked.breakfast ? [picked.breakfast] : [],
-      lunch: picked.lunch ? [picked.lunch] : [],
-      snack: picked.snack ? [picked.snack] : [],
-      dinner: picked.dinner ? [picked.dinner] : [],
-    };
+  const selectedMeals = {
+    breakfast: picked.breakfast ? [picked.breakfast] : [],
+    lunch: picked.lunch ? [picked.lunch] : [],
+    snack: picked.snack ? [picked.snack] : [],
+    dinner: picked.dinner ? [picked.dinner] : [],
+  };
 
-    const meta = {
-      bmiCategory: prefs.bmiCategory,
-      dietPref: prefs.dietPref,
-      planLabel: activePlan?.meta?.label || "",
-      planId: activePlanId,
-      seed,
-      recommendedCalories: bmiRule?.recommended_calories || "",
-      fatLimit: bmiRule?.fat_limit_g || "",
-      fiberMin: bmiRule?.fiber_min_g || "",
-      healthConditions: prefs.healthConditions || [],
-      allergies: prefs.allergies || [],
-    };
+  const meta = {
+    bmiCategory: prefs?.bmiCategory || "",
+    planLabel: activePlan?.meta?.label || "",
+    planId: activePlanId,
+  };
 
+ try {
+    const userId = getUserId();
+if (!userId) {
+  alert("Please login before saving a diet plan.");
+  nav("/login");
+  return;
+}
+
+    // Save the selected plan to the database
+    const response = await fetch("http://localhost:5000/api/plans", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+  user_id: Number(userId),
+
+  breakfast: picked.breakfast
+    ? JSON.stringify(picked.breakfast)
+    : null,
+
+  lunch: picked.lunch
+    ? JSON.stringify(picked.lunch)
+    : null,
+
+  snack: picked.snack
+    ? JSON.stringify(picked.snack)
+    : null,
+
+  dinner: picked.dinner
+    ? JSON.stringify(picked.dinner)
+    : null,
+}),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+
+      throw new Error(
+        errorData.details
+          ? `${errorData.error || "Failed to save diet plan"}: ${errorData.details}`
+          : errorData.error || "Failed to save diet plan"
+      );
+    }
+
+    const result = await response.json();
+
+    console.log("✅ Plan saved to database:", result);
+
+    // Keep the existing frontend plan structure
+    // so Results and SmartBuddy continue working.
     const savedPlan = savePlanToHistory({
       meals: selectedMeals,
       meta,
       daysCount: 1,
     });
-    nav("/results", { state: { justSavedId: savedPlan.id } });
+
+    nav("/results", {
+      state: {
+        justSavedId: savedPlan.id,
+      },
+    });
+
+  } catch (error) {
+    console.error("❌ Failed to save plan:", error);
+
+    alert(
+      error instanceof TypeError
+        ? "Cannot connect to the save server. Start the backend with: cd server && npm start"
+        : error.message || "Failed to save your diet plan."
+    );
   }
+}
 
   if (loading) {
     return (

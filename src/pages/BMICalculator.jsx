@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
-
+import { UserContext } from "../context/userContextValue";
 export default function BMICalculator() {
   const navigate = useNavigate();
-
+  const { setUser } = useContext(UserContext);
   /* ---------- AGE ---------- */
   const [age, setAge] = useState("");
 
@@ -65,22 +65,50 @@ export default function BMICalculator() {
 
   /* ---------- POPUP + NAVIGATION ---------- */
  const goToDietGeneration = () => {
-// BMI calculate successful ayyaka
+  if (!bmi) {
+    alert("Please calculate your BMI first");
+    return;
+  }
 
+  const weight = getWeightInKg();
+  const heightMeters = getHeightInMeters();
+  const heightCmValue = heightMeters * 100;
 
-  // ✅ normalize category to match RuleDiet dropdown values
   const raw = getBMICategory();
+
   const normalized =
-    raw === "Normal weight" ? "Normal" : raw; // Underweight/Overweight/Obese already same
+    raw === "Normal weight" ? "Normal" : raw;
+
+  // Save the BMI/profile information into global context
+  setUser((prev) => ({
+    ...prev,
+
+    height: heightCmValue,
+    heightCm: heightCmValue,
+
+    weight: weight,
+    weightKg: weight,
+
+    age: Number(age),
+    gender,
+
+    bmi: Number(bmi),
+    category: normalized,
+  }));
 
   navigate("/rule-diet", {
     state: {
       bmiCategory: normalized,
-      bmiValue: Number(bmi), // optional (future use)
+      bmiValue: Number(bmi),
+
+      heightCm: heightCmValue,
+      weightKg: weight,
+
+      age: Number(age),
+      gender,
     },
   });
 };
-
   return (
     <div className="bmi-page">
       <div className="bmi-card">

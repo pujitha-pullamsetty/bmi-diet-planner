@@ -82,7 +82,7 @@ export default function Results() {
           <div className="card">
             <h3 style={{ marginTop: 0 }}>No saved plans yet 😅</h3>
             <p>select plans in RuleDiet page <b>and the click </b> Follow this Plan</p>
-            <button className="btn" onClick={goRuleDiet}>Go to RuleDiet</button>
+            <button className="btn" onClick={goRuleDiet} style={{ color: "black" }}>Go to RuleDiet</button>
           </div>
         ) : (
           <>
@@ -113,9 +113,14 @@ export default function Results() {
 
                       {/* ✅ floating tooltip */}
                       <div className="know-wrap">
-                       
-                        <button className="btn small" onClick={() => knowMore(plan)}>Know more</button>
-                      </div>
+  <button className="btn small" onClick={() => knowMore(plan)}>
+    Know more
+  </button>
+
+  <div className="know-tip">
+    Get personalized guidance from SmartBuddy 💡
+  </div>
+</div>
 
                       <button className="btn small danger" onClick={() => deletePlan(plan.id)}>
                         Delete
@@ -143,91 +148,228 @@ export default function Results() {
         )}
       </div>
 
-      <style>{`
-        .results-page{ min-height:100vh; padding: 18px; color: rgba(240,245,255,0.92); }
-        .container{ max-width: 980px; margin: 0 auto; }
-        .title{ margin: 0 0 6px; font-size: 30px; font-weight: 900; }
-        .subtitle{ margin: 0 0 14px; opacity: 0.85; }
-        .card, .plan-card, .day{
-          background: rgba(7,12,35,0.35);
-          border: 1px solid rgba(140,170,255,0.25);
-          border-radius: 16px;
-          padding: 14px;
-        }
-        .actions{ display:flex; gap:10px; margin: 10px 0 14px; flex-wrap: wrap; }
-        .btn{
-          border: 1px solid rgba(140,170,255,0.25);
-          background: rgba(255,255,255,0.08);
-          color: rgba(240,245,255,0.92);
-          padding: 10px 14px;
-          border-radius: 12px;
-          cursor: pointer;
-        }
-        .btn:hover{ background: rgba(255,255,255,0.12); }
-        .btn.small{ padding: 8px 12px; border-radius: 10px; }
-        .btn.ghost{ opacity: 0.85; }
-        .btn.danger{ border-color: rgba(255,120,120,0.35); }
-        .plan-card{ margin-bottom: 12px; }
-        .plan-top{ display:flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-        .plan-title{ font-size: 22px; font-weight: 900; }
-        .plan-meta{ margin-top: 6px; opacity: 0.85; }
-        .btnrow{ display:flex; gap: 10px; align-items:center; flex-wrap: wrap; }
+    <style>{`
+  .results-page{
+    min-height:100vh;
+    padding:18px;
+    color:rgba(240,245,255,0.92);
+  }
 
-        .days{ margin-top: 12px; }
-        .day{ margin-bottom: 10px; }
-        .day-title{ font-size: 16px; font-weight: 800; margin-bottom: 8px; }
+  .container{
+    max-width:980px;
+    margin:0 auto;
+  }
 
-        .meal{ margin: 10px 0; }
-        .meal-title{ font-weight: 900; }
-        .meal ul{ margin: 6px 0 0 18px; }
+  .title{
+    margin:0 0 6px;
+    font-size:30px;
+    font-weight:900;
+  }
 
-        /* ✅ tooltip bubble that floats up-down */
-        .know-wrap{ position: relative; display: inline-flex; align-items:center; }
-        .know-tip{
-          position: absolute;
-          bottom: 42px;
-          left: 50%;
-          transform: translateX(-50%);
-          background: rgba(20,30,70,0.92);
-          border: 1px solid rgba(140,170,255,0.25);
-          padding: 8px 10px;
-          border-radius: 12px;
-          font-size: 12px;
-          white-space: nowrap;
-          opacity: 0.0;
-          pointer-events: none;
-          animation: floaty 1.6s ease-in-out infinite;
-        }
-        .know-wrap:hover .know-tip{ opacity: 1; }
-        @keyframes floaty {
-          0% { transform: translateX(-50%) translateY(0px); }
-          50% { transform: translateX(-50%) translateY(-6px); }
-          100% { transform: translateX(-50%) translateY(0px); }
-        }
-      `}</style>
+  .subtitle{
+    margin:0 0 14px;
+    opacity:0.85;
+  }
+
+  .card,
+  .plan-card,
+  .day{
+    background:rgba(7,12,35,0.35);
+    border:1px solid rgba(140,170,255,0.25);
+    border-radius:16px;
+    padding:14px;
+  }
+
+  .actions{
+    display:flex;
+    gap:10px;
+    margin:10px 0 14px;
+    flex-wrap:wrap;
+  }
+
+  .btn{
+    border:1px solid rgba(140,170,255,0.25);
+    background:rgba(255,255,255,0.08);
+    color:white;
+    padding:10px 14px;
+    border-radius:12px;
+    cursor:pointer;
+    font-weight:700;
+  }
+
+  .btn:hover{
+    background:rgba(241,21,35,0.95);
+    color:white;
+  }
+
+  .btn.small{
+    padding:8px 12px;
+    border-radius:10px;
+  }
+
+  .btn.ghost{
+    opacity:0.85;
+  }
+
+  .btn.danger{
+    border-color:rgba(255,120,120,0.35);
+  }
+
+  .plan-card{
+    margin-bottom:12px;
+    position:relative;
+    z-index:1;
+    overflow:visible;
+  }
+
+  .plan-top{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    flex-wrap:wrap;
+    position:relative;
+    overflow:visible;
+  }
+
+  .plan-title{
+    font-size:22px;
+    font-weight:900;
+  }
+
+  .plan-meta{
+    margin-top:6px;
+    opacity:0.85;
+  }
+
+  .btnrow{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    flex-wrap:wrap;
+    overflow:visible;
+  }
+
+  .days{
+    margin-top:12px;
+  }
+
+  .day{
+    margin-bottom:10px;
+  }
+
+  .day-title{
+    font-size:16px;
+    font-weight:800;
+    margin-bottom:8px;
+  }
+
+  .meal{
+    margin:10px 0;
+  }
+
+  .meal-title{
+    font-weight:900;
+  }
+
+  .meal ul{
+    margin:6px 0 0 18px;
+  }
+
+  .know-wrap{
+    position:relative;
+    display:inline-flex;
+    align-items:center;
+    z-index:9999;
+    overflow:visible;
+  }
+
+  .know-tip{
+    position:absolute;
+    bottom:calc(100% + 10px);
+    left:50%;
+    transform:translateX(-50%);
+
+    background:#1b2a52;
+    color:white;
+    border:1px solid rgba(140,170,255,0.4);
+
+    padding:9px 12px;
+    border-radius:10px;
+
+    font-size:12px;
+    font-weight:600;
+    white-space:nowrap;
+
+    opacity:0;
+    pointer-events:none;
+    z-index:99999;
+
+    animation:floaty 1.6s ease-in-out infinite;
+  }
+
+  .know-wrap:hover .know-tip{
+    opacity:1;
+  }
+
+  @keyframes floaty{
+    0%{
+      transform:translateX(-50%) translateY(0);
+    }
+
+    50%{
+      transform:translateX(-50%) translateY(-5px);
+    }
+
+    100%{
+      transform:translateX(-50%) translateY(0);
+    }
+  }
+`}</style>
     </div>
   );
 }
 
 function Meal({ title, items }) {
   const arr = Array.isArray(items) ? items : [];
+
   return (
     <div className="meal">
       <div className="meal-title">{title}</div>
+
       {arr.length === 0 ? (
         <div style={{ opacity: 0.75 }}>—</div>
       ) : (
         <ul>
           {arr.map((it, i) => {
-            const name = it?.food_name || it?.name || (typeof it === "string" ? it : "Item");
-            const kcal = it?.calories_kcal != null ? Math.round(Number(it.calories_kcal)) : null;
-            const p = it?.protein_g != null ? Number(it.protein_g).toFixed(2) : null;
-            const f = it?.fat_g != null ? Number(it.fat_g).toFixed(2) : null;
-            const fi = it?.fiber_g != null ? Number(it.fiber_g).toFixed(2) : null;
+            const name =
+              it?.food_name ||
+              it?.name ||
+              (typeof it === "string" ? it : "Item");
+
+            const kcal =
+              it?.calories_kcal != null
+                ? Math.round(Number(it.calories_kcal))
+                : null;
+
+            const p =
+              it?.protein_g != null
+                ? Number(it.protein_g).toFixed(2)
+                : null;
+
+            const f =
+              it?.fat_g != null
+                ? Number(it.fat_g).toFixed(2)
+                : null;
+
+            const fi =
+              it?.fiber_g != null
+                ? Number(it.fiber_g).toFixed(2)
+                : null;
 
             return (
               <li key={i}>
                 <b>{name}</b>
+
                 {kcal != null && (
                   <span style={{ opacity: 0.85 }}>
                     {" "}• {kcal} kcal • P {p}g • F {f}g • Fi {fi}g

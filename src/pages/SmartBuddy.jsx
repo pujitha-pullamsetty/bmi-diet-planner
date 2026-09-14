@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { loadCSV } from "../utils/csvLoader";
+
 
 function norm(s) {
   return String(s || "").toLowerCase().trim();
@@ -20,25 +20,28 @@ const USE_BACKEND_API = false;
 /* ✅ LLM call: gemma2:2b */
 async function callLLM({ prompt }) {
   try {
-    const url = "/ollama/api/generate";
-    const res = await fetch(url, {
+    const res = await fetch("http://localhost:5000/api/ai/chat", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({
-        model: "gemma2:2b",
-        prompt,
-        stream: false,
+        message: prompt,
       }),
     });
 
     const data = await res.json();
+
     if (!res.ok) {
-      console.error("LLM error:", res.status, data);
+      console.error("SmartBuddy API error:", data);
       return null;
     }
-    return { text: data?.response || "" };
+
+    return {
+      text: data?.answer || data?.response || data?.text || "",
+    };
   } catch (e) {
-    console.error("LLM fetch failed:", e);
+    console.error("SmartBuddy API failed:", e);
     return null;
   }
 }
@@ -64,16 +67,29 @@ User Meta:
 FACTS (dataset macros):
 ${factsText}
 
-Output format (use clear headings):
+Output format:
+
 ## Summary
+Brief explanation of why this selected plan suits the user.
+
 ## Breakfast
+Explain the selected breakfast, portion, benefits and preparation.
+
 ## Lunch
+Explain the selected lunch, portion, benefits and preparation.
+
 ## Snack
+Explain the selected snack, portion and benefits.
+
 ## Dinner
-## Positives
+Explain the selected dinner, portion, benefits and preparation.
+
 ## DOs and DON'Ts
-## Weekly checklist
-## Safety notes
+Give the most important practical points.
+
+Keep the response concise.
+Do not repeat the FACTS.
+Do not invent foods that are not in FACTS.
 `.trim();
 }
 
@@ -569,38 +585,57 @@ export default function SmartBuddy() {
   }, [incomingPlan]);
 
   useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        setLoading(true);
-        setErr("");
+  let alive = true;
 
-        const foodsRows = await loadCSV("/datasets/foods_dataset_final.csv");
-        const foodsNorm = (foodsRows || [])
-          .map((r, idx) => ({
-            _row: idx,
-            food_id: r.food_id ?? r.id ?? `${idx}`,
-            food_name: r.food_name ?? r.name ?? "Unknown Food",
-            calories_kcal: safeNum(r.calories_kcal ?? r.calories ?? r.kcal, 0),
-            protein_g: safeNum(r.protein_g ?? r.protein ?? 0, 0),
-            fat_g: safeNum(r.fat_g ?? r.fat ?? 0, 0),
-            fiber_g: safeNum(r.fiber_g ?? r.fiber ?? 0, 0),
-          }))
-          .filter((f) => f.food_name);
+  async function loadDietData() {
+    try {
+      setLoading(true);
+      setErr("");
 
-        if (!alive) return;
-        setFoods(foodsNorm);
-      } catch (e) {
-        setErr(e?.message || "Failed to load foods dataset");
-      } finally {
+      const response = await fetch("http://localhost:5000/api/diet-data");
+
+      if (!response.ok) {
+        throw new Error("Failed to load diet data from server");
+      }
+
+      const data = await response.json();
+
+      if (!alive) return;
+
+      if (!Array.isArray(data.foods)) {
+        throw new Error("Invalid food data received from server");
+      }
+
+      const foodsNorm = data.foods.map((food, index) => ({
+        _row: index,
+        food_id: food.food_id,
+        food_name: food.food_name,
+        meal_type: food.meal_type,
+        diet_type: food.diet_type,
+
+        calories_kcal: safeNum(food.calories_kcal),
+        protein_g: safeNum(food.protein_g),
+        fat_g: safeNum(food.fat_g),
+        fiber_g: safeNum(food.fiber_g),
+      }));
+
+      setFoods(foodsNorm);
+    } catch (e) {
+      console.error("SmartBuddy diet data error:", e);
+      setErr(e?.message || "Failed to load diet data");
+    } finally {
+      if (alive) {
         setLoading(false);
       }
-    })();
-    return () => {
-      alive = false;
-    };
-  }, []);
+    }
+  }
 
+  loadDietData();
+
+  return () => {
+    alive = false;
+  };
+}, []);
   // ✅ rotate loader asset while busy
   useEffect(() => {
     if (!busy) return;
