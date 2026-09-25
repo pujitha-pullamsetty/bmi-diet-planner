@@ -87,12 +87,10 @@ if (mealType) {
     }
 
     // Basic nutrition filtering
-    foods = foods
-      .filter(
-        (food) =>
-          food.fiber_g >= nutritionRule.fiber_min_g
-      )
-      .slice(0, 20);
+    // Select foods for the recommendation list.
+// fiber_min_g is a daily target, so it should not be
+// applied as a minimum requirement to every individual food.
+foods = foods.slice(0, 20);
 
     res.json({
       bmi: bmiValue,

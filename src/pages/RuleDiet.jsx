@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { getUserId } from "../utils/user";
+import API_BASE from "../utils/api";
+
 const MEALS = ["breakfast", "lunch", "snack", "dinner"];
 const LS_HISTORY_KEY = "bmi_plan_history";
 
@@ -431,6 +433,7 @@ export default function RuleDiet() {
   const [rules, setRules] = useState([]);
   const [_seed, setSeed] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [backendRecommendations, setBackendRecommendations] = useState([]);
   const [busyGen, setBusyGen] = useState(false);
   const [err, setErr] = useState("");
 
@@ -470,7 +473,7 @@ useEffect(() => {
       setLoading(true);
       setErr("");
 
-      const response = await fetch("http://localhost:5000/api/diet-data");
+      const response = await fetch(`${API_BASE}/api/diet-data`);
 
       if (!response.ok) {
         throw new Error("Failed to load diet data from server");
@@ -937,7 +940,7 @@ if (!userId) {
 }
 
     // Save the selected plan to the database
-    const response = await fetch("http://localhost:5000/api/plans", {
+    const response = await fetch(`${API_BASE}/api/plans`, { 
       method: "POST",
       headers: {
         "Content-Type": "application/json",

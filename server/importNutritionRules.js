@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 
 const results = [];
 
-fs.createReadStream("../datasets/nutrition_rules_final.csv")
+fs.createReadStream("./dataset/nutrition_rules_final.csv")
   .pipe(csv())
   .on("data", (data) => {
     results.push({
@@ -24,11 +24,9 @@ fs.createReadStream("../datasets/nutrition_rules_final.csv")
         skipDuplicates: true,
       });
 
-      console.log(
-        `✅ Imported ${results.length} nutrition rules.`
-      );
+      console.log(`Imported ${results.length} nutrition rules.`);
     } catch (error) {
-      console.error("❌ Import failed:", error);
+      console.error("Nutrition rules import failed:", error);
     } finally {
       await prisma.$disconnect();
     }

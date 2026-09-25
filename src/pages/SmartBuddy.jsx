@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-
+import API_BASE from "../utils/api";
 
 function norm(s) {
   return String(s || "").toLowerCase().trim();
@@ -20,7 +20,7 @@ const USE_BACKEND_API = false;
 /* ✅ LLM call: gemma2:2b */
 async function callLLM({ prompt }) {
   try {
-    const res = await fetch("http://localhost:5000/api/ai/chat", {
+    const res = await fetch(`${API_BASE}/api/ai/chat`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -592,7 +592,7 @@ export default function SmartBuddy() {
       setLoading(true);
       setErr("");
 
-      const response = await fetch("http://localhost:5000/api/diet-data");
+      const response = await fetch(`${API_BASE}/api/diet-data`);
 
       if (!response.ok) {
         throw new Error("Failed to load diet data from server");

@@ -10,7 +10,7 @@ fs.createReadStream("./dataset/bmi_classification_final.csv")
   .pipe(csv())
   .on("data", (data) => {
     results.push({
-      bmi_category: data.bmi_category,
+      bmi_category: data.bmi_category.trim(),
       bmi_min: Number(data.bmi_min),
       bmi_max: Number(data.bmi_max),
     });
@@ -22,9 +22,9 @@ fs.createReadStream("./dataset/bmi_classification_final.csv")
         skipDuplicates: true,
       });
 
-      console.log(`✅ Imported ${results.length} BMI classifications.`);
+      console.log(`Imported ${results.length} BMI classifications.`);
     } catch (error) {
-      console.error("❌ Import failed:", error);
+      console.error("BMI import failed:", error);
     } finally {
       await prisma.$disconnect();
     }
